@@ -1,5 +1,6 @@
-1. 
-# # Start the infrastructure
+# Batch 
+# 1. 
+# Start the infrastructure
 docker-compose up -d
 
 # Verify NameNode is out of Safe Mode and RPC (8020) is active
@@ -29,3 +30,16 @@ docker exec -it namenode hdfs dfs -ls -R /user/refined/
 # Run the inspector and pipe output to a text file
 docker exec -it spark-master /spark/bin/spark-submit `
   /app/batch_layer/inspect_results.py > batch_analysis_report.txt
+
+
+
+#-----------------------
+#Stream
+#2. 
+docker-compose start kafka-producer
+
+docker exec -it flink-jobmanager ./bin/flink run -py /app/stream_layer/flink_app.py
+
+docker logs -f flink-taskmanager
+
+docker logs flink-taskmanager > stream_analytics_report.txt
