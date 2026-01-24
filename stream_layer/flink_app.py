@@ -29,11 +29,10 @@ class AlertFunction(ProcessFunction):
             print(f"ALERT: High Traffic for {asset_id} at {value.get('Timestamp')}")
 
 class WindowAverageFunction(ProcessWindowFunction):
-    """ TASK B.2: Real-Time Waiting Time -> WRITE TO POSTGRES """
     def process(self, key, context, elements):
         count = 0
         total_wait = 0.0
-        asset_id = key 
+        asset_id = key # Fixes the "T" bug
         
         for element in elements:
             try:
@@ -44,21 +43,10 @@ class WindowAverageFunction(ProcessWindowFunction):
 
         if count > 0:
             avg_wait = round(total_wait / count, 2)
-            
-            # --- WRITE TO DATABASE ---
-            try:
-                conn = psycopg2.connect(host=DB_HOST, database=DB_NAME, user=DB_USER, password=DB_PASS)
-                cur = conn.cursor()
-                query = "INSERT INTO window_analytics (asset_id, avg_wait_time) VALUES (%s, %s)"
-                cur.execute(query, (asset_id, avg_wait))
-                conn.commit()
-                cur.close()
-                conn.close()
-                print(f"DB SAVED: Asset={asset_id} | AvgWait={avg_wait}")
-            except Exception as e:
-                print(f"DB ERROR: {e}")
-            
-            yield f"Saved {asset_id} to DB"
+            window_end = context.window().end
+            # OUTPUT TO CONSOLE
+            print(f"WINDOW REPORT: Asset={asset_id} | AvgWait={avg_wait} | Time={window_end}")
+            yield f"Processed {asset_id}"
 
 def main():
     env = StreamExecutionEnvironment.get_execution_environment()
