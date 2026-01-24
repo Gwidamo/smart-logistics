@@ -1,0 +1,31 @@
+1. 
+# # Start the infrastructure
+docker-compose up -d
+
+# Verify NameNode is out of Safe Mode and RPC (8020) is active
+docker exec -it namenode hdfs dfsadmin -report
+
+2. 
+# 1. Create the HDFS directory structure
+docker exec -it namenode hdfs dfs -mkdir -p /user/raw/logistics
+
+# 2. Upload the local CSV to the HDFS Lake
+docker exec -it namenode hdfs dfs -put -f /app/data/smart_logistics_dataset.csv /user/raw/logistics/
+
+# 3. Verify the file is in HDFS
+docker exec -it namenode hdfs dfs -ls /user/raw/logistics/
+
+3. 
+# Submit the job to the Spark Standalone Cluster
+docker exec -it spark-master /spark/bin/spark-submit `
+  --master spark://spark-master:7077 `
+  /app/batch_layer/batch_job.py
+
+4. 
+# List the refined analytics tables
+docker exec -it namenode hdfs dfs -ls -R /user/refined/
+
+5. 
+# Run the inspector and pipe output to a text file
+docker exec -it spark-master /spark/bin/spark-submit `
+  /app/batch_layer/inspect_results.py > batch_analysis_report.txt

@@ -1,0 +1,19 @@
+# Start from the official Flink image
+FROM flink:1.17-java11
+
+# Install Python 3 and Pip
+RUN apt-get update -y && \
+    apt-get install -y python3 python3-pip python3-dev && \
+    ln -s /usr/bin/python3 /usr/bin/python
+
+# Upgrade pip to ensure it handles big downloads better
+RUN pip3 install --upgrade pip
+
+# Install PyFlink with a LONG timeout to prevent crashing on slow internet
+# We also use --no-cache-dir to save space and prevent corruption
+RUN pip3 install --default-timeout=1000 --no-cache-dir apache-flink==1.17.0
+
+# Download the Kafka Connector JAR
+RUN wget -P /opt/flink/lib/ https://repo.maven.apache.org/maven2/org/apache/flink/flink-sql-connector-kafka/1.17.0/flink-sql-connector-kafka-1.17.0.jar
+
+WORKDIR /app

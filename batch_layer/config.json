@@ -1,0 +1,7 @@
+{
+    "hdfs_base": "hdfs://namenode:8020",
+    "raw_data_path": "/user/raw/logistics/smart_logistics_dataset.csv",
+    "output_base_path": "/user/refined/",
+    "spark_master": "spark://spark-master:7077",
+    "app_name": "Logistics_Production_Batch"
+}

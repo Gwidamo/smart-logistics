@@ -1,0 +1,174 @@
+version: '3.8'
+
+networks:
+  big-data-net:
+    driver: bridge
+
+services:
+  # --- HDFS STORAGE (Still needed for Batch Layer) ---
+  namenode:
+    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+    container_name: namenode
+    networks:
+      - big-data-net
+    environment:
+      - CLUSTER_NAME=test
+      - ENSURE_NAMENODE_DIR=/hadoop/dfs/name
+    ports:
+      - "9870:9870"
+      - "8020:8020"
+    volumes:
+      - ./data:/app/data
+      
+  datanode:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+    container_name: datanode
+    networks:
+      - big-data-net
+    environment:
+      - SERVICE_PRECONDITION=namenode:9870
+      - CORE_CONF_fs_defaultFS=hdfs://namenode:8020
+    env_file:
+      - ./config/hadoop.env 
+    volumes:
+      - ./data:/app/data
+
+
+
+  # --- BATCH LAYER: SPARK STANDALONE ---
+  spark-master:
+    image: bde2020/spark-master:3.1.1-hadoop3.2
+    container_name: spark-master
+    networks:
+      - big-data-net
+    ports:
+      - "8080:8080"
+      - "7077:7077"
+    volumes:
+      - ./batch_layer:/app/batch_layer
+      - ./data:/app/data
+
+  spark-worker:
+    image: bde2020/spark-worker:3.1.1-hadoop3.2
+    container_name: spark-worker
+    networks:
+      - big-data-net
+    depends_on:
+      - spark-master
+    environment:
+      - SPARK_MASTER=spark://spark-master:7077
+    volumes:
+      - ./batch_layer:/app/batch_layer
+      - ./data:/app/data
+
+  # --- STREAMING LAYER: KAFKA ---
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    container_name: kafka
+    networks:
+      - big-data-net
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092'
+      KAFKA_LISTENERS: 'PLAINTEXT://kafka:29092,CONTROLLER://kafka:29093,PLAINTEXT_HOST://0.0.0.0:9092'
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka:29093'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
+
+  # --- PRODUCER SERVICE ---
+  kafka-producer:
+    build: 
+      context: ./stream_layer
+    container_name: kafka-producer
+    networks:
+      - big-data-net
+    depends_on:
+      - kafka
+    volumes:
+      - ./stream_layer:/app/stream_layer
+      - ./data:/app/data
+    environment:
+      - KAFKA_BROKER=kafka:29092  # Internal Docker Network Port
+
+# --- KAFKA UI ---
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    networks:
+      - big-data-net
+    ports:
+      - "8090:8080"  # Access at localhost:8090
+    environment:
+      - KAFKA_CLUSTERS_0_NAME=local
+      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:29092
+      - DYNAMIC_CONFIG_ENABLED=true
+
+  # --- STREAMING LAYER: FLINK ---
+  # --- FLINK (Custom Python Build) ---
+  flink-jobmanager:
+    build: 
+      context: ./stream_layer
+      dockerfile: Dockerfile.flink   # <--- Uses our custom file
+    container_name: flink-jobmanager
+    networks:
+      - big-data-net
+    ports:
+      - "8081:8081"
+    command: jobmanager
+    volumes:
+      - ./stream_layer:/app/stream_layer
+    environment:
+      - |
+        FLINK_PROPERTIES=
+        jobmanager.rpc.address: flink-jobmanager
+
+  flink-taskmanager:
+    build: 
+      context: ./stream_layer
+      dockerfile: Dockerfile.flink   # <--- Same custom image
+    container_name: flink-taskmanager
+    networks:
+      - big-data-net
+    depends_on:
+      - flink-jobmanager
+    command: taskmanager
+    environment:
+      - |
+        FLINK_PROPERTIES=
+        jobmanager.rpc.address: flink-jobmanager
+        taskmanager.numberOfTaskSlots: 2
+
+  # --- DATABASE ---
+  postgres:
+    image: postgres:14
+    container_name: postgres
+    networks:
+      - big-data-net
+    ports:
+      - "5432:5432"  # <--- THIS IS WHAT WE NEEDED
+    environment:
+      - POSTGRES_USER=myuser
+      - POSTGRES_PASSWORD=mypassword
+      - POSTGRES_DB=logistics_db
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data
+
+
+  # --- VISUALIZATION: GRAFANA ---
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    networks:
+      - big-data-net
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    depends_on:
+      - postgres
