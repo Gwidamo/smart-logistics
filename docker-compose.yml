@@ -145,30 +145,30 @@ services:
         taskmanager.numberOfTaskSlots: 2
 
   # --- DATABASE ---
-  postgres:
-    image: postgres:14
-    container_name: postgres
-    networks:
-      - big-data-net
-    ports:
-      - "5432:5432"  # <--- THIS IS WHAT WE NEEDED
-    environment:
-      - POSTGRES_USER=myuser
-      - POSTGRES_PASSWORD=mypassword
-      - POSTGRES_DB=logistics_db
-    volumes:
-      - ./postgres_data:/var/lib/postgresql/data
+  # postgres:
+  #   image: postgres:14
+  #   container_name: postgres
+  #   networks:
+  #     - big-data-net
+  #   ports:
+  #     - "5432:5432"  # <--- THIS IS WHAT WE NEEDED
+  #   environment:
+  #     - POSTGRES_USER=myuser
+  #     - POSTGRES_PASSWORD=mypassword
+  #     - POSTGRES_DB=logistics_db
+  #   volumes:
+  #     - ./postgres_data:/var/lib/postgresql/data
 
 
   # --- VISUALIZATION: GRAFANA ---
-  grafana:
-    image: grafana/grafana:latest
-    container_name: grafana
-    networks:
-      - big-data-net
-    ports:
-      - "3000:3000"
-    environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
-    depends_on:
-      - postgres
+  # grafana:
+  #   image: grafana/grafana:latest
+  #   container_name: grafana
+  #   networks:
+  #     - big-data-net
+  #   ports:
+  #     - "3000:3000"
+  #   environment:
+  #     - GF_SECURITY_ADMIN_PASSWORD=admin
+  #   depends_on:
+  #     - postgres
