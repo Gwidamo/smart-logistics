@@ -58,15 +58,19 @@ verify-upload:
 
 .PHONY: submit-batch
 submit-batch:
-	docker exec -it spark-master /spark/bin/spark-submit --master spark://spark-master:7077 /app/batch_layer/batch_job.py
-
+	docker exec -u 0 -it spark-worker pip3 install geopy
+	docker exec -u 0 -it spark-master pip3 install geopy
+	docker exec -it spark-master /spark/bin/spark-submit \
+   --master spark://spark-master:7077 \
+   --py-files /app/batch_layer/src/transformations.py \
+   /app/batch_layer/batch_job.py
 .PHONY: list-refined
 list-refined:
 	docker exec -it namenode hdfs dfs -ls -R /user/refined/
 
 .PHONY: batch-report
 batch-report:
-	docker exec -it spark-master /spark/bin/spark-submit /app/batch_layer/inspect_results.py > output/batch_analysis_report.txt
+	docker exec -e PYTHONIOENCODING=utf-8 -it spark-master /spark/bin/spark-submit /app/batch_layer/inspect_results.py > output/batch_analysis_report.txt
 
 .PHONY: full-batch-pipeline
 full-batch-pipeline: setup-hdfs upload-data submit-batch batch-report
