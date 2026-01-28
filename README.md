@@ -146,9 +146,14 @@ To stop all the running services, use:
 make down
 ```
 
+---
+
 ## 👥 Team Members
-Mohamed Habiba
-Ahmed Tarek Aboughanima
-Mohamed Atef Omara
-Mohamed Abdelsalam Farag Gwida
+* **Mohamed Habiba**
+* **Ahmed Tarek Aboughanima**
+* **Mohamed Atef Omara**
+* **Mohamed Abdelsalam Farag Gwida**
+
+---
+*This project was developed for the Big Data Course/Project.*
 
