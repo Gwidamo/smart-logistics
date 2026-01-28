@@ -145,3 +145,10 @@ To stop all the running services, use:
 ```bash
 make down
 ```
+
+## 👥 Team Members
+Mohamed Habiba
+Ahmed Tarek Aboughanima
+Mohamed Atef Omara
+Mohamed Abdelsalam Farag Gwida
+
